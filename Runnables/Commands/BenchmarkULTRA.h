@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "../../Shell/Shell.h"
+
 using namespace Shell;
 
 #include "../../Algorithms/CSA/CSA.h"
@@ -27,8 +28,9 @@ using namespace Shell;
 class RunTransitiveCSAQueries : public ParameterizedCommand {
 
 public:
-    RunTransitiveCSAQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runTransitiveCSAQueries", "Runs the given number of random transitive CSA queries.") {
+    RunTransitiveCSAQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runTransitiveCSAQueries",
+                                 "Runs the given number of random transitive CSA queries.") {
         addParameter("CSA input file");
         addParameter("Number of queries");
         addParameter("Target pruning?");
@@ -45,7 +47,7 @@ public:
 
         const bool targetPruning = getParameter<bool>("Target pruning?");
 
-        for (const StopQuery& query : queries) {
+        for (const StopQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, targetPruning ? query.target : noStop);
         }
         algorithm.getProfiler().printStatistics();
@@ -55,8 +57,9 @@ public:
 class RunDijkstraCSAQueries : public ParameterizedCommand {
 
 public:
-    RunDijkstraCSAQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runDijkstraCSAQueries", "Runs the given number of random Dijkstra-CSA queries.") {
+    RunDijkstraCSAQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runDijkstraCSAQueries",
+                                 "Runs the given number of random Dijkstra-CSA queries.") {
         addParameter("CSA input file");
         addParameter("CH data");
         addParameter("Number of queries");
@@ -72,7 +75,7 @@ public:
         const size_t n = getParameter<size_t>("Number of queries");
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(ch.numVertices(), n);
 
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
         }
         algorithm.getProfiler().printStatistics();
@@ -82,8 +85,8 @@ public:
 class RunHLCSAQueries : public ParameterizedCommand {
 
 public:
-    RunHLCSAQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runHLCSAQueries", "Runs the given number of random HL-CSA queries.") {
+    RunHLCSAQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runHLCSAQueries", "Runs the given number of random HL-CSA queries.") {
         addParameter("CSA input file");
         addParameter("Out-hub file");
         addParameter("In-hub file");
@@ -101,7 +104,7 @@ public:
         const size_t n = getParameter<size_t>("Number of queries");
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(inHubs.numVertices(), n);
 
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
         }
         algorithm.getProfiler().printStatistics();
@@ -111,8 +114,8 @@ public:
 class RunULTRACSAQueries : public ParameterizedCommand {
 
 public:
-    RunULTRACSAQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runULTRACSAQueries", "Runs the given number of random ULTRA-CSA queries.") {
+    RunULTRACSAQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runULTRACSAQueries", "Runs the given number of random ULTRA-CSA queries.") {
         addParameter("CSA input file");
         addParameter("CH data");
         addParameter("Number of queries");
@@ -128,7 +131,7 @@ public:
         const size_t n = getParameter<size_t>("Number of queries");
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(ch.numVertices(), n);
 
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
         }
         algorithm.getProfiler().printStatistics();
@@ -138,8 +141,9 @@ public:
 class RunTransitiveRAPTORQueries : public ParameterizedCommand {
 
 public:
-    RunTransitiveRAPTORQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runTransitiveRAPTORQueries", "Runs the given number of random transitive RAPTOR queries.") {
+    RunTransitiveRAPTORQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runTransitiveRAPTORQueries",
+                                 "Runs the given number of random transitive RAPTOR queries.") {
         addParameter("RAPTOR input file");
         addParameter("Number of queries");
     }
@@ -154,12 +158,12 @@ public:
         const std::vector<StopQuery> queries = generateRandomStopQueries(raptorData.numberOfStops(), n);
 
         double numJourneys = 0;
-        for (const StopQuery& query : queries) {
+        for (const StopQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
             numJourneys += algorithm.getJourneys().size();
         }
         algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys/n) << std::endl;
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
 
     }
 };
@@ -167,8 +171,9 @@ public:
 class RunDijkstraRAPTORQueries : public ParameterizedCommand {
 
 public:
-    RunDijkstraRAPTORQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runDijkstraRAPTORQueries", "Runs the given number of random Dijkstra RAPTOR queries.") {
+    RunDijkstraRAPTORQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runDijkstraRAPTORQueries",
+                                 "Runs the given number of random Dijkstra RAPTOR queries.") {
         addParameter("RAPTOR input file");
         addParameter("CH data");
         addParameter("Number of queries");
@@ -179,26 +184,27 @@ public:
         raptorData.useImplicitDepartureBufferTimes();
         raptorData.printInfo();
         CH::CH ch(getParameter("CH data"));
-        RAPTOR::DijkstraRAPTOR<RAPTOR::CoreCHInitialTransfers, RAPTOR::AggregateProfiler, true, false> algorithm(raptorData, ch);
+        RAPTOR::DijkstraRAPTOR<RAPTOR::CoreCHInitialTransfers, RAPTOR::AggregateProfiler, true, false> algorithm(
+                raptorData, ch);
 
         const size_t n = getParameter<size_t>("Number of queries");
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(ch.numVertices(), n);
 
         double numJourneys = 0;
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
             numJourneys += algorithm.getJourneys().size();
         }
         algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys/n) << std::endl;
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
     }
 };
 
 class RunHLRAPTORQueries : public ParameterizedCommand {
 
 public:
-    RunHLRAPTORQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runHLRAPTORQueries", "Runs the given number of random HL-RAPTOR queries.") {
+    RunHLRAPTORQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runHLRAPTORQueries", "Runs the given number of random HL-RAPTOR queries.") {
         addParameter("RAPTOR input file");
         addParameter("Out-hub file");
         addParameter("In-hub file");
@@ -217,20 +223,21 @@ public:
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(inHubs.numVertices(), n);
 
         double numJourneys = 0;
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
             numJourneys += algorithm.getJourneys().size();
         }
         algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys/n) << std::endl;
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
     }
 };
 
 class RunULTRARAPTORQueries : public ParameterizedCommand {
 
 public:
-    RunULTRARAPTORQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runULTRARAPTORQueries", "Runs the given number of random ULTRA-RAPTOR queries.") {
+    RunULTRARAPTORQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runULTRARAPTORQueries",
+                                 "Runs the given number of random ULTRA-RAPTOR queries.") {
         addParameter("RAPTOR input file");
         addParameter("CH data");
         addParameter("Number of queries");
@@ -247,20 +254,130 @@ public:
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(ch.numVertices(), n);
 
         double numJourneys = 0;
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
             numJourneys += algorithm.getJourneys().size();
         }
         algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys/n) << std::endl;
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
+    }
+};
+
+class RunULTRARAPTORWithGivenQueries : public ParameterizedCommand {
+
+public:
+    RunULTRARAPTORWithGivenQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runULTRARAPTORWithGivenQueries", "Runs ULTRA-RAPTOR for the given queries.") {
+        addParameter("RAPTOR input file");
+        addParameter("CH data");
+        addParameter(
+                "Queries"); //CSV file output by TransformKaRRiRequestsToULTRAQueries, header: "source,target,departure_time"
+        addParameter("Journey output file");
+        addParameter("Prevent Walking", "yes", {"yes", "no"});
+    }
+
+    virtual void execute() noexcept {
+        RAPTOR::Data raptorData = RAPTOR::Data::FromBinary(getParameter("RAPTOR input file"));
+        raptorData.useImplicitDepartureBufferTimes();
+        raptorData.printInfo();
+        CH::CH ch(getParameter("CH data"));
+
+        std::cout << "Reading queries..." << std::flush;
+
+        const std::string queriesFile = getParameter("Queries");
+        std::vector<VertexQuery> queries;
+        static constexpr IO::IgnoreColumn ReadMode = IO::IGNORE_NO_COLUMN;
+        IO::CSVReader<3, IO::TrimChars<>, IO::DoubleQuoteEscape<',', '"'>> in(queriesFile);
+        in.readHeader(ReadMode, "source", "target", "departure_time");
+        int source, target, departureTime;
+        while (in.readRow(source, target, departureTime)) {
+            queries.emplace_back(Vertex(source), Vertex(target), departureTime);
+        }
+        std::cout << " done." << std::endl;
+
+        const bool preventWalking = (getParameter("Prevent Walking") == "yes");
+        const std::string outFileName = getParameter("Journey output file");
+        if (preventWalking) {
+            RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, true> algorithm(raptorData, ch);
+            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName, raptorData.transferGraph);
+        } else {
+            RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, false> algorithm(raptorData, ch);
+            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName, raptorData.transferGraph);
+        }
+    }
+
+private:
+
+    template<typename Algorithm>
+    void runQueriesAndWriteJourneyStats(Algorithm &algorithm, const std::vector<VertexQuery> &queries,
+                                        const std::string &outFileName, const TransferGraph& transferGraph) noexcept {
+        const size_t n = queries.size();
+        std::cout << "Running queries ..." << std::flush;
+        ProgressBar progressBar(n);
+        progressBar.SetDotOutputStep(1);
+        progressBar.SetPercentOutputStep(5);
+        double numJourneys = 0;
+        std::ofstream out(outFileName);
+        if (!out.good()) {
+            std::cerr << "Could not open output file " << outFileName << " for writing journeys.";
+            return;
+        }
+        out << "request_id,departure_time,arrival_time,num_trips,"
+               "accegr_transfer_time,intermediate_transfer_time,wait_time,in_vehicle_time\n";
+        size_t requestId = 0;
+        for (const VertexQuery &query: queries) {
+            algorithm.run(query.source, query.departureTime, query.target);
+            numJourneys += algorithm.getJourneys().size();
+            const auto journeys = algorithm.getJourneys();
+            const auto arrivals = algorithm.getArrivals();
+            Assert(journeys.size() == arrivals.size(), "Number of journeys and arrivals do not match.");
+            for (size_t i = 0; i < journeys.size(); ++i) {
+                const RAPTOR::Journey &journey = journeys[i];
+                const auto &arrival = arrivals[i];
+                const int accEgrTransferTime = RAPTOR::initialTransferTime(journey);
+                const int intermediateTransferTime = RAPTOR::intermediateTransferTime(journey);
+                int inVehicleTime = 0;
+                for (const auto &leg: journey) {
+                    if (leg.usesRoute) {
+                        inVehicleTime += leg.arrivalTime - leg.departureTime;
+                    }
+                }
+                const int waitTime = arrival.arrivalTime - query.departureTime - inVehicleTime - accEgrTransferTime -
+                                     intermediateTransferTime;
+                out << requestId << "," << query.departureTime << "," << arrival.arrivalTime << ","
+                    << arrival.numberOfTrips << "," << accEgrTransferTime << ","
+                    << intermediateTransferTime << "," << waitTime << "," << inVehicleTime << "\n";
+
+//                // print coordinates of path for debug
+//                const auto path = RAPTOR::journeyToPath(journey);
+//                std::cout << "Path for request " << requestId << ", journey" << i << ": ";
+//                for (size_t j = 1; j < path.size() - 1; ++j) {
+//                    const auto coord = transferGraph.get(Coordinates, path[j]);
+//                    std::cout << "(" << path[j].value() << "," << coord.latitude << "," << coord.longitude << ")";
+//                    if (j + 1 < path.size() - 1) {
+//                        std::cout << ", ";
+//                    } else {
+//                        std::cout << std::endl;
+//                    }
+//                }
+
+            }
+            ++requestId;
+            ++progressBar;
+        }
+        out.close();
+        std::cout << " done." << std::endl;
+        algorithm.getProfiler().printStatistics();
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
     }
 };
 
 class RunTransitiveTBQueries : public ParameterizedCommand {
 
 public:
-    RunTransitiveTBQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runTransitiveTBQueries", "Runs the given number of random transitive TB queries.") {
+    RunTransitiveTBQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runTransitiveTBQueries",
+                                 "Runs the given number of random transitive TB queries.") {
         addParameter("Trip-Based input file");
         addParameter("Number of queries");
     }
@@ -274,20 +391,20 @@ public:
         const std::vector<StopQuery> queries = generateRandomStopQueries(tripBasedData.numberOfStops(), n);
 
         double numJourneys = 0;
-        for (const StopQuery& query : queries) {
+        for (const StopQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
             numJourneys += algorithm.getJourneys().size();
         }
         algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys/n) << std::endl;
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
     }
 };
 
 class RunULTRATBQueries : public ParameterizedCommand {
 
 public:
-    RunULTRATBQueries(BasicShell& shell) :
-        ParameterizedCommand(shell, "runULTRATBQueries", "Runs the given number of random ULTRA-TB queries.") {
+    RunULTRATBQueries(BasicShell &shell) :
+            ParameterizedCommand(shell, "runULTRATBQueries", "Runs the given number of random ULTRA-TB queries.") {
         addParameter("Trip-Based input file");
         addParameter("CH data");
         addParameter("Number of queries");
@@ -303,11 +420,11 @@ public:
         const std::vector<VertexQuery> queries = generateRandomVertexQueries(ch.numVertices(), n);
 
         double numJourneys = 0;
-        for (const VertexQuery& query : queries) {
+        for (const VertexQuery &query: queries) {
             algorithm.run(query.source, query.departureTime, query.target);
             numJourneys += algorithm.getJourneys().size();
         }
         algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys/n) << std::endl;
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
     }
 };

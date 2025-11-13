@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
     new AugmentTripBasedShortcuts(shell);
     new ValidateStopToStopShortcuts(shell);
     new ValidateEventToEventShortcuts(shell);
+    new TransformKaRRiRequestsToULTRAQueries(shell);
 
     //ULTRA
     new RunTransitiveCSAQueries(shell);
@@ -44,6 +45,7 @@ int main(int argc, char** argv) {
     new RunULTRARAPTORQueries(shell);
     new RunTransitiveTBQueries(shell);
     new RunULTRATBQueries(shell);
+    new RunULTRARAPTORWithGivenQueries(shell);
 
     //McULTRA
     new RunTransitiveMcRAPTORQueries(shell);

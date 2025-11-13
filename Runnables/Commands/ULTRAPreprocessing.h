@@ -743,3 +743,73 @@ public:
         validateShortcutGraph(original, shortcuts, Vertex(original.numVertices()));
     }
 };
+
+
+class TransformKaRRiRequestsToULTRAQueries : public ParameterizedCommand {
+
+public:
+    TransformKaRRiRequestsToULTRAQueries(BasicShell& shell) :
+            ParameterizedCommand(shell, "transformKaRRiRequestsToULTRAQueries", "Takes requests output by KaRRi::TransformRequestsToLatLng and generates ULTRA queries based on geographical proximity.") {
+        addParameter("Transfer graph");
+        addParameter("KaRRi requests");
+        addParameter("ULTRA queries output");
+    }
+
+    virtual void execute() noexcept {
+        const TransferGraph graph(getParameter("Transfer graph"));
+        const std::string karriRequestsFileName = getParameter("KaRRi requests");
+        const std::string outputFileName = getParameter("ULTRA queries output");
+
+        Graph::printInfo(graph);
+        graph.printAnalysis();
+
+        Geometry::Rectangle boundingBox = Geometry::Rectangle::BoundingBox(graph[Coordinates]);
+        Geometry::GeoMetricAproximation metric = Geometry::GeoMetricAproximation::ComputeCorrection(boundingBox.center());
+        CoordinateTree<Geometry::GeoMetricAproximation> ct(metric, graph[Coordinates]);
+        std::vector<VertexQuery> queries;
+        std::vector<int> distances;
+
+
+        static constexpr IO::IgnoreColumn ReadMode = IO::IGNORE_NO_COLUMN;
+        IO::CSVReader<5, IO::TrimChars<>, IO::DoubleQuoteEscape<',','"'>> in(karriRequestsFileName);
+        in.readHeader(ReadMode, "lat_origin", "lon_origin", "lat_destination", "lon_destination", "req_time");
+        double latitudeOrigin = 0.0;
+        double longitudeOrigin = 0.0;
+        double latitudeDestination = 0.0;
+        double longitudeDestination = 0.0;
+        int requestTime = 0;
+        while (in.readRow(latitudeOrigin, longitudeOrigin, latitudeDestination, longitudeDestination, requestTime)) {
+            const auto pointOrigin = Geometry::Point(Construct::LatLong, latitudeOrigin, longitudeOrigin);
+            const auto pointDestination = Geometry::Point(Construct::LatLong, latitudeDestination, longitudeDestination);
+            const Vertex originVertex = ct.getNearestNeighbor(pointOrigin);
+            const double originDistance = Geometry::geoDistanceInCM(pointOrigin, graph.get(Coordinates, originVertex));
+            const Vertex destinationVertex = ct.getNearestNeighbor(pointDestination);
+            const double destinationDistance = Geometry::geoDistanceInCM(pointDestination, graph.get(Coordinates, destinationVertex));
+            distances.push_back(originDistance);
+            distances.push_back(destinationDistance);
+            const VertexQuery query(Vertex(originVertex), Vertex(destinationVertex), requestTime);
+            queries.push_back(query);
+        }
+
+        // Print statistics on distances
+        std::sort(distances.begin(), distances.end());
+        const size_t numDistances = distances.size();
+        std::cout << "Statistics on distances from request points to nearest graph vertices (in meters):" << std::endl;
+        std::cout << "  Min: " << distances.front() / 100.0 << std::endl;
+        std::cout << "  10th percentile: " << distances[numDistances / 10] / 100.0 << std::endl;
+        std::cout << "  Median: " << distances[numDistances / 2] / 100.0 << std::endl;
+        std::cout << "  90th percentile: " << distances[(numDistances * 9) / 10] / 100.0 << std::endl;
+        std::cout << "  Max: " << distances.back() / 100.0 << std::endl;
+
+        std::ofstream out(outputFileName);
+        if (!out.good()) {
+            std::cerr << "Could not open output file " << outputFileName << " for writing ULTRA queries.";
+            return;
+        }
+        out << "source,target,departure_time\n";
+        for (const VertexQuery& query : queries) {
+            out << query.source.value() << "," << query.target.value() << "," << query.departureTime << "\n";
+        }
+        out.close();
+    }
+};
