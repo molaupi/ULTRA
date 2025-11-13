@@ -273,7 +273,7 @@ public:
         addParameter(
                 "Queries"); //CSV file output by TransformKaRRiRequestsToULTRAQueries, header: "source,target,departure_time"
         addParameter("Journey output file");
-        addParameter("Prevent Walking", "yes", {"yes", "no"});
+        addParameter("Prevent Walking", "true", {"true", "false"});
     }
 
     virtual void execute() noexcept {
@@ -295,7 +295,7 @@ public:
         }
         std::cout << " done." << std::endl;
 
-        const bool preventWalking = (getParameter("Prevent Walking") == "yes");
+        const bool preventWalking = getParameter<bool>("Prevent Walking");
         const std::string outFileName = getParameter("Journey output file");
         if (preventWalking) {
             RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, true> algorithm(raptorData, ch);
