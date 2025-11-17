@@ -54,6 +54,7 @@ int main(int argc, char** argv) {
     new RunULTRAMcTBQueries(shell);
     new RunTransitiveBoundedMcRAPTORQueries(shell);
     new RunUBMRAPTORQueries(shell);
+    new RunUBMRAPTORWithGivenQueries(shell);
     new RunUBMTBQueries(shell);
     new RunUBMHydRAQueries(shell);
     new ComputeTransferTimeSavings(shell);

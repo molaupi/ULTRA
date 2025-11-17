@@ -299,10 +299,10 @@ public:
         const std::string outFileName = getParameter("Journey output file");
         if (preventWalking) {
             RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, true> algorithm(raptorData, ch);
-            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName, raptorData.transferGraph);
+            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName);
         } else {
             RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, false> algorithm(raptorData, ch);
-            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName, raptorData.transferGraph);
+            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName);
         }
     }
 
@@ -310,7 +310,7 @@ private:
 
     template<typename Algorithm>
     void runQueriesAndWriteJourneyStats(Algorithm &algorithm, const std::vector<VertexQuery> &queries,
-                                        const std::string &outFileName, const TransferGraph& transferGraph) noexcept {
+                                        const std::string &outFileName) noexcept {
         const size_t n = queries.size();
         std::cout << "Running queries ..." << std::flush;
         ProgressBar progressBar(n);

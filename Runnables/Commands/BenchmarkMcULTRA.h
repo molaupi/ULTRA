@@ -209,6 +209,108 @@ public:
     }
 };
 
+
+class RunUBMRAPTORWithGivenQueries : public ParameterizedCommand {
+
+public:
+    RunUBMRAPTORWithGivenQueries(BasicShell& shell) :
+            ParameterizedCommand(shell, "runUBMRAPTORWithGivenQueries", "Runs the UBM-RAPTOR with the given queries.") {
+        addParameter("RAPTOR input file");
+        addParameter("CH data");
+        addParameter("Arrival slack");
+        addParameter("Trip slack");
+        addParameter(
+                "Queries"); //CSV file output by TransformKaRRiRequestsToULTRAQueries, header: "source,target,departure_time"
+        addParameter("Journey output file");
+    }
+
+    virtual void execute() noexcept {
+        RAPTOR::Data raptorData = RAPTOR::Data::FromBinary(getParameter("RAPTOR input file"));
+        raptorData.useImplicitDepartureBufferTimes();
+        raptorData.printInfo();
+        const RAPTOR::Data reverseData = raptorData.reverseNetwork();
+        CH::CH ch(getParameter("CH data"));
+        RAPTOR::UBMRAPTOR<RAPTOR::AggregateProfiler> algorithm(raptorData, reverseData, ch);
+
+        const double arrivalSlack = getParameter<double>("Arrival slack");
+        const double tripSlack = getParameter<double>("Trip slack");
+
+        std::cout << "Reading queries..." << std::flush;
+
+        const std::string queriesFile = getParameter("Queries");
+        std::vector<VertexQuery> queries;
+        static constexpr IO::IgnoreColumn ReadMode = IO::IGNORE_NO_COLUMN;
+        IO::CSVReader<3, IO::TrimChars<>, IO::DoubleQuoteEscape<',', '"'>> in(queriesFile);
+        in.readHeader(ReadMode, "source", "target", "departure_time");
+        int source, target, departureTime;
+        while (in.readRow(source, target, departureTime)) {
+            queries.emplace_back(Vertex(source), Vertex(target), departureTime);
+        }
+        std::cout << " done." << std::endl;
+
+        const size_t n = queries.size();
+        std::cout << "Running queries ..." << std::flush;
+        ProgressBar progressBar(n);
+        progressBar.SetDotOutputStep(1);
+        progressBar.SetPercentOutputStep(5);
+        double numJourneys = 0;
+        const std::string outFileName = getParameter("Journey output file");
+        std::ofstream out(outFileName);
+        if (!out.good()) {
+            std::cerr << "Could not open output file " << outFileName << " for writing journeys.";
+            return;
+        }
+        out << "request_id,departure_time,arrival_time,num_trips,"
+               "accegr_transfer_time,intermediate_transfer_time,wait_time,in_vehicle_time\n";
+        size_t requestId = 0;
+        for (const VertexQuery &query: queries) {
+            algorithm.run(query.source, query.departureTime, query.target, arrivalSlack, tripSlack);
+            numJourneys += algorithm.getJourneys().size();
+            const auto journeys = algorithm.getJourneys();
+            const auto paretoLabels = algorithm.getResults();
+            Assert(journeys.size() == paretoLabels.size(), "Number of journeys and paretoLabels do not match.");
+            for (size_t i = 0; i < journeys.size(); ++i) {
+                const RAPTOR::Journey &journey = journeys[i];
+                const auto &label = paretoLabels[i];
+                const int accEgrTransferTime = RAPTOR::initialTransferTime(journey);
+                const int intermediateTransferTime = RAPTOR::intermediateTransferTime(journey);
+                Assert(accEgrTransferTime + intermediateTransferTime == label.walkingDistance, "Transfer times from journey do not match walking distance from label.");
+                int inVehicleTime = 0;
+                for (const auto &leg: journey) {
+                    if (leg.usesRoute) {
+                        inVehicleTime += leg.arrivalTime - leg.departureTime;
+                    }
+                }
+                const int waitTime = label.arrivalTime - query.departureTime - inVehicleTime - accEgrTransferTime -
+                                     intermediateTransferTime;
+                out << requestId << "," << query.departureTime << "," << label.arrivalTime << ","
+                    << label.numberOfTrips << "," << accEgrTransferTime << ","
+                    << intermediateTransferTime << "," << waitTime << "," << inVehicleTime << "\n";
+
+//                // print coordinates of path for debug
+//                const auto path = RAPTOR::journeyToPath(journey);
+//                std::cout << "Path for request " << requestId << ", journey" << i << ": ";
+//                for (size_t j = 1; j < path.size() - 1; ++j) {
+//                    const auto coord = transferGraph.get(Coordinates, path[j]);
+//                    std::cout << "(" << path[j].value() << "," << coord.latitude << "," << coord.longitude << ")";
+//                    if (j + 1 < path.size() - 1) {
+//                        std::cout << ", ";
+//                    } else {
+//                        std::cout << std::endl;
+//                    }
+//                }
+
+            }
+            ++requestId;
+            ++progressBar;
+        }
+        out.close();
+        std::cout << " done." << std::endl;
+        algorithm.getProfiler().printStatistics();
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
+    }
+};
+
 class RunUBMTBQueries : public ParameterizedCommand {
 
 public:
