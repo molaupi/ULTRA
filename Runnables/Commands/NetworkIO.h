@@ -64,6 +64,75 @@ public:
 
 };
 
+class ZuendorfFormatToCSA : public ParameterizedCommand {
+
+public:
+    ZuendorfFormatToCSA(BasicShell& shell) :
+        ParameterizedCommand(shell, "zuendorfFormatToCSA",
+            "Converts Zündorf timetable format (see https://i11www.iti.kit.edu/extra/PublicTransitData/Switzerland/readme.pdf) to CSA network format."
+            "Use loadDimacsGraph to get transfer graph in correct format before running this.") {
+        addParameter("Input file basename");
+        addParameter("Transfer graph");
+        addParameter("Output file");
+    }
+
+    virtual void execute() noexcept {
+        const std::string inputFileBasename = getParameter("Input file basename");
+        const std::string transferGraphFile = getParameter("Transfer graph");
+        const std::string outputFile = getParameter("Output file");
+
+        CSA::TransferGraph graph;
+        graph.readBinary(getParameter("Transfer graph"));
+        graph.printAnalysis();
+
+        // Read csv input data
+        static constexpr IO::IgnoreColumn ReadMode = IO::IGNORE_NO_COLUMN;
+
+        std::vector<CSA::Stop> stops;
+        IO::CSVReader<3, IO::TrimChars<>, IO::DoubleQuoteEscape<',', '"'> > stopReader(inputFileBasename + ".stops.csv");
+        stopReader.readHeader(ReadMode, "vertex_id","gtfs_stop_name","minimum_change_time");
+        int vertexId, minTransferTime;
+        std::string name;
+        int lastVertexId = 0;
+        while (stopReader.readRow(vertexId, name, minTransferTime)) {
+            // Expect vertex IDs in file to start at 1 and be sequential. Subtract 1 to get internal vertex ID.
+            Assert(vertexId == lastVertexId + 1, "Vertex IDs in stops file not sequential.");
+            stops.emplace_back(name, graph.get(Coordinates, Vertex(vertexId - 1)), minTransferTime);
+            lastVertexId = vertexId;
+        }
+
+        std::vector<CSA::Connection> connections;
+        IO::CSVReader<6, IO::TrimChars<>, IO::DoubleQuoteEscape<',', '"'> > connectionsReader(inputFileBasename + ".connections.csv");
+        connectionsReader.readHeader(ReadMode, "connection_id","departure_vertex","arrival_vertex","departure_time","arrival_time","trip_id");
+        int connectionId, depStopId, arrStopId, depTime, arrTime, tripId;
+        while (connectionsReader.readRow(connectionId, depStopId, arrStopId, depTime, arrTime, tripId)) {
+            // Expect stop IDs to start at 1. Subtract 1 to get internal stop ID.
+            Assert(depStopId >= 1 && arrStopId >= 1, "Stop IDs in connections file must be >= 1.");
+            // Expect trip IDs to start at 1. Subtract 1 to get internal trip ID.
+            Assert(tripId >= 1, "Trip IDs in connections file must be >= 1.");
+            connections.emplace_back(StopId(depStopId - 1), StopId(arrStopId - 1), depTime, arrTime, TripId(tripId - 1));
+        }
+
+        std::vector<CSA::Trip> trips;
+        IO::CSVReader<5, IO::TrimChars<>, IO::DoubleQuoteEscape<',', '"'> > tripsReader(inputFileBasename + ".trips.csv");
+        tripsReader.readHeader(ReadMode, "trip_id","gtfs_trip_short_name","gtfs_route_type","gtfs_route_short_name","gtfs_route_long_name");
+        int routeType;
+        int lastTripId = 0;
+        std::string gtfsTripShortName, gtfsRouteShortName, gtfsRouteLongName;
+        while (tripsReader.readRow(tripId, gtfsTripShortName, routeType,gtfsRouteShortName,gtfsRouteLongName)) {
+            // Expect trip IDs to start at 1. Write to internal trip ID tripId - 1.
+            Assert(tripId == lastTripId + 1, "Trip IDs not sequential.");
+            trips.emplace_back(gtfsTripShortName, gtfsRouteLongName, routeType);
+            lastTripId = tripId;
+        }
+
+        CSA::Data data = CSA::Data::FromInput(stops, connections, trips, graph);
+        data.printInfo();
+        data.serialize(outputFile);
+    }
+
+};
+
 class IntermediateToCSA : public ParameterizedCommand {
 
 public:
@@ -82,6 +151,28 @@ public:
         CSA::Data data = CSA::Data::FromIntermediate(inter);
         data.printInfo();
         data.serialize(outputFile);
+    }
+
+};
+
+class CSAToIntermediate : public ParameterizedCommand {
+
+public:
+    CSAToIntermediate(BasicShell& shell) :
+        ParameterizedCommand(shell, "csaToIntermediate", "Converts binary CSA network format to intermediate format.") {
+        addParameter("Input file");
+        addParameter("Output file");
+    }
+
+    virtual void execute() noexcept {
+        const std::string inputFile = getParameter("Input file");
+        const std::string outputFile = getParameter("Output file");
+
+        CSA::Data csa = CSA::Data::FromBinary(inputFile);
+        csa.printInfo();
+        Intermediate::Data inter = Intermediate::Data::FromCSA(csa, true);
+        inter.printInfo();
+        inter.serialize(outputFile);
     }
 
 };

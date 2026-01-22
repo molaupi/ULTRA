@@ -474,6 +474,28 @@ public:
         if (verbose) std::cout << " done." << std::endl;
     }
 
+    inline void removeNonStopEdgesFromTransferGraph(const bool verbose = false) {
+        validate();
+        TransferGraph graph;
+        graph.addVertices(stops.size());
+        Progress progress(stops.size(), verbose);
+        for (const StopId from : stopIds()) {
+            graph.set(Coordinates, from, stops[from].coordinates);
+            for (const Edge edge : transferGraph.edgesFrom(from)) {
+                const Vertex to = transferGraph.get(ToVertex, edge);
+                if (isStop(to)) {
+                    graph.addEdge(from, to).set(TravelTime, transferGraph.get(TravelTime, edge));
+                }
+            }
+            progress++;
+        }
+
+        graph.packEdges();
+        Graph::move(std::move(graph), transferGraph);
+        validate();
+        if (verbose) std::cout << " done." << std::endl;
+    }
+
     inline void duplicateTrips(const int timeOffset = 24 * 60 * 60) noexcept {
         const size_t oldTripCount = trips.size();
         for (size_t i = 0; i < oldTripCount; i++) {
@@ -544,6 +566,7 @@ public:
                 newVertices.emplace_back(vertex);
             }
         }
+
         Order order = Order(newStops + newVertices + deletions);
         Permutation permutation(Construct::Invert, order);
         transferGraph.applyVertexPermutation(permutation);
@@ -563,7 +586,9 @@ public:
         }
         transferGraph.packEdges();
         for (const StopId stop : stopIds()) {
-            Assert(stops[stop].coordinates == transferGraph.get(Coordinates, stop), "Transit stop " << stop << " does no match with its transfer vertex!");
+            const auto stopCoords = stops[stop].coordinates;
+            const auto vertexCoords = transferGraph.get(Coordinates, stop);
+            Assert(stopCoords == vertexCoords, "Transit stop " << stop << " does no match with its transfer vertex!");
         }
     }
 

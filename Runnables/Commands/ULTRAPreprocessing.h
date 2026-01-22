@@ -813,3 +813,72 @@ public:
         out.close();
     }
 };
+
+
+class GenerateRandomStopToStopQueries : public ParameterizedCommand {
+public:
+    GenerateRandomStopToStopQueries(BasicShell& shell) :
+            ParameterizedCommand(shell, "generateRandomStopToStopQueries",
+                "Generates random stop-to-stop queries for given RAPTOR data and writes them to file."
+                "Picks source and target stops uniformly at random."
+                "Picks departure time uniformly at random in the given time interval (in seconds).") {
+        addParameter("RAPTOR data");
+        addParameter("Queries output");
+        addParameter("Number of queries");
+        addParameter("Start of interval", "0");
+        addParameter("End of interval", "86400");
+    }
+
+    virtual void execute() noexcept {
+
+        const std::string inputFileName = getParameter("RAPTOR data");
+        RAPTOR::Data data(inputFileName);
+        data.printInfo();
+
+        const auto numQueries = getParameter<int>("Number of queries");
+        const auto startInterval = getParameter<int>("Start of interval");
+        const auto endInterval = getParameter<int>("End of interval");
+        if (startInterval >= endInterval) {
+            std::cerr << "Start of interval must be less than end of interval." << std::endl;
+            return;
+        }
+
+        int minDep = std::numeric_limits<int>::max();
+        int maxDep = std::numeric_limits<int>::min();
+        for (const auto& stopEvent : data.stopEvents) {
+            if (minDep > stopEvent.departureTime) minDep = stopEvent.departureTime;
+            if (maxDep < stopEvent.departureTime) maxDep = stopEvent.departureTime;
+        }
+        if (startInterval < minDep || endInterval > maxDep) {
+            std::cerr << "Given time interval [" << startInterval << ", " << endInterval << "] is out of bounds. "
+                      << "Earliest departure time in data is " << minDep << ", latest arrival time is " << maxDep << "." << std::endl;
+            return;
+        }
+
+        const std::string outputFileName = getParameter("Queries output");
+        std::ofstream out(outputFileName);
+        if (!out.good()) {
+            std::cerr << "Could not open output file " << outputFileName << " for writing ULTRA queries.";
+            return;
+        }
+        out << "source,target,departure_time\n";
+
+        // Generate random queries
+        std::cout << "Generating " << numQueries << " random stop-to-stop queries..." << std::endl;
+        std::mt19937 rng;
+        std::uniform_int_distribution<int> stopDist(0, data.numberOfStops() - 1);
+        std::uniform_int_distribution<int> timeDist(startInterval, endInterval - 1);
+        for (int i = 0; i < numQueries; ++i) {
+            StopId source = StopId(stopDist(rng));
+            StopId target = StopId(stopDist(rng));
+            // Make sure, source and target are different
+            while (target == source) {
+                target = StopId(stopDist(rng));
+            }
+            int departureTime = timeDist(rng);
+            out << source.value() << "," << target.value() << "," << departureTime << "\n";
+        }
+        out.close();
+        std::cout << " done." << std::endl;
+    }
+};

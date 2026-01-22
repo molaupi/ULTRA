@@ -50,6 +50,88 @@ public:
     }
 };
 
+class RunTransitiveMcRAPTORWithGivenQueries : public ParameterizedCommand {
+
+public:
+    RunTransitiveMcRAPTORWithGivenQueries(BasicShell& shell) :
+        ParameterizedCommand(shell, "runTransitiveMcRAPTORWithGivenQueries", "Runs the given transitive McRAPTOR queries.") {
+        addParameter("RAPTOR input file");
+        //CSV file output by TransformKaRRiRequestsToULTRAQueries, header: "source,target,departure_time"
+        addParameter("Queries");
+        addParameter("Journey output file");
+    }
+
+    virtual void execute() noexcept {
+        RAPTOR::Data raptorData = RAPTOR::Data::FromBinary(getParameter("RAPTOR input file"));
+        raptorData.useImplicitDepartureBufferTimes();
+        raptorData.printInfo();
+        RAPTOR::McRAPTOR<true, true, RAPTOR::AggregateProfiler> algorithm(raptorData);
+
+        std::cout << "Reading queries..." << std::flush;
+        const std::string queriesFile = getParameter("Queries");
+        std::vector<StopQuery> queries;
+        static constexpr IO::IgnoreColumn ReadMode = IO::IGNORE_NO_COLUMN;
+        IO::CSVReader<3, IO::TrimChars<>, IO::DoubleQuoteEscape<',', '"'> > in(queriesFile);
+        in.readHeader(ReadMode, "source", "target", "departure_time");
+        int source, target, departureTime;
+        while (in.readRow(source, target, departureTime)) {
+            Assert(raptorData.isStop(Vertex(source)), "Source " << source << " is not a stop.");
+            Assert(raptorData.isStop(Vertex(target)), "Target " << target << " is not a stop.");
+            queries.emplace_back(StopId(source), StopId(target), departureTime);
+        }
+        std::cout << " done." << std::endl;
+
+
+        const size_t n = queries.size();
+        std::cout << "Running queries ..." << std::flush;
+        ProgressBar progressBar(n);
+        progressBar.SetDotOutputStep(1);
+        progressBar.SetPercentOutputStep(5);
+        double numJourneys = 0;
+        const std::string outFileName = getParameter("Journey output file");
+        std::ofstream out(outFileName);
+        if (!out.good()) {
+            std::cerr << "Could not open output file " << outFileName << " for writing journeys.";
+            return;
+        }
+        out << "request_id,departure_time,arrival_time,num_trips,"
+               "accegr_transfer_time,intermediate_transfer_time,wait_time,in_vehicle_time\n";
+        size_t requestId = 0;
+        for (const StopQuery &query: queries) {
+            algorithm.run(query.source, query.departureTime, query.target);
+            numJourneys += algorithm.getJourneys().size();
+            const auto journeys = algorithm.getJourneys();
+            const auto paretoLabels = algorithm.getResults();
+            Assert(journeys.size() == paretoLabels.size(), "Number of journeys and paretoLabels do not match.");
+            for (size_t i = 0; i < journeys.size(); ++i) {
+                const RAPTOR::Journey &journey = journeys[i];
+                const auto &label = paretoLabels[i];
+                const int accEgrTransferTime = RAPTOR::initialTransferTime(journey);
+                const int intermediateTransferTime = RAPTOR::intermediateTransferTime(journey);
+                Assert(accEgrTransferTime + intermediateTransferTime == label.walkingDistance, "Transfer times from journey do not match walking distance from label.");
+                int inVehicleTime = 0;
+                for (const auto &leg: journey) {
+                    if (leg.usesRoute) {
+                        inVehicleTime += leg.arrivalTime - leg.departureTime;
+                    }
+                }
+                const int waitTime = label.arrivalTime - query.departureTime - inVehicleTime - accEgrTransferTime -
+                                     intermediateTransferTime;
+                out << requestId << "," << query.departureTime << "," << label.arrivalTime << ","
+                    << label.numberOfTrips << "," << accEgrTransferTime << ","
+                    << intermediateTransferTime << "," << waitTime << "," << inVehicleTime << "\n";
+
+            }
+            ++requestId;
+            ++progressBar;
+        }
+        out.close();
+        std::cout << " done." << std::endl;
+        algorithm.getProfiler().printStatistics();
+        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
+    }
+};
+
 class RunMCRQueries : public ParameterizedCommand {
 
 public:

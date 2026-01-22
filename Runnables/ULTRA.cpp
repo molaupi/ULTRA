@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
     new ValidateStopToStopShortcuts(shell);
     new ValidateEventToEventShortcuts(shell);
     new TransformKaRRiRequestsToULTRAQueries(shell);
+    new GenerateRandomStopToStopQueries(shell);
 
     //ULTRA
     new RunTransitiveCSAQueries(shell);
@@ -40,6 +41,7 @@ int main(int argc, char** argv) {
     new RunHLCSAQueries(shell);
     new RunULTRACSAQueries(shell);
     new RunTransitiveRAPTORQueries(shell);
+    new RunTransitiveRAPTORWithGivenQueries(shell);
     new RunDijkstraRAPTORQueries(shell);
     new RunHLRAPTORQueries(shell);
     new RunULTRARAPTORQueries(shell);
@@ -49,6 +51,7 @@ int main(int argc, char** argv) {
 
     //McULTRA
     new RunTransitiveMcRAPTORQueries(shell);
+    new RunTransitiveMcRAPTORWithGivenQueries(shell);
     new RunMCRQueries(shell);
     new RunULTRAMcRAPTORQueries(shell);
     new RunULTRAMcTBQueries(shell);

@@ -14,7 +14,9 @@ int main(int argc, char** argv) {
     ::Shell::Shell shell;
     new ParseGTFS(shell);
     new GTFSToIntermediate(shell);
+    new ZuendorfFormatToCSA(shell);
     new IntermediateToCSA(shell);
+    new CSAToIntermediate(shell);
     new IntermediateToRAPTOR(shell);
     new BuildMultimodalRAPTORData(shell);
     new AddModeToMultimodalRAPTORData(shell);
@@ -32,6 +34,7 @@ int main(int argc, char** argv) {
     new MakeOneHopTransfers(shell);
     new ApplyMaxTransferSpeed(shell);
     new ApplyConstantTransferSpeed(shell);
+    new RemoveAllNonStopEdgesFromTransferGraph(shell);
     shell.run();
     return 0;
 }

@@ -473,3 +473,28 @@ private:
         network.serialize(outputFile);
     }
 };
+
+
+class RemoveAllNonStopEdgesFromTransferGraph : public ParameterizedCommand {
+
+public:
+    RemoveAllNonStopEdgesFromTransferGraph(BasicShell& shell) :
+        ParameterizedCommand(shell, "removeAllNonStopEdgesFromTransferGraph",
+            "Removes all edges that are not between stops from the transfer graph.") {
+        addParameter("Intermediate file");
+        addParameter("Output file");
+    }
+
+    virtual void execute() noexcept {
+        const std::string intermediateFile = getParameter("Intermediate file");
+        const std::string outputFile = getParameter("Output file");
+
+        Intermediate::Data inter = Intermediate::Data::FromBinary(intermediateFile);
+        inter.printInfo();
+        inter.removeNonStopEdgesFromTransferGraph(true);
+        inter.printInfo();
+        inter.serialize(outputFile);
+    }
+
+};
+

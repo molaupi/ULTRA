@@ -74,13 +74,31 @@ public:
         Data data;
         data.stopData = stops;
         data.tripData = trips;
+        std::vector<int> tripTrans(data.tripData.size(), 0);
         for (const Connection con : connections) {
             if (con.departureStopId >= data.stopData.size() || data.stopData[con.departureStopId].minTransferTime < 0) continue;
             if (con.arrivalStopId >= data.stopData.size() || data.stopData[con.arrivalStopId].minTransferTime < 0) continue;
             if (con.departureTime > con.arrivalTime) continue;
             if (con.tripId >= data.tripData.size()) continue;
+            tripTrans[con.tripId] = 1;
             data.connections.emplace_back(con);
         }
+
+        // Remove empty trips
+        std::exclusive_scan(tripTrans.begin(), tripTrans.end(), tripTrans.begin(), 0);
+        const auto numNonEmptyTrips = tripTrans.back() + 1;
+        for (int i = 0; i < static_cast<int>(data.tripData.size()); i++) {
+            Assert(tripTrans[i] <= i, "Trip transposition is invalid!");
+            data.tripData[tripTrans[i]] = data.tripData[i];
+        }
+        const int numAllTrips = static_cast<int>(data.tripData.size());
+        data.tripData.resize(numNonEmptyTrips);
+        for (auto& con : data.connections) {
+            con.tripId = TripId(tripTrans[con.tripId]);
+        }
+
+        std::cout << "Removed " << (numAllTrips - numNonEmptyTrips) << " empty trips." << std::endl;
+
         Intermediate::TransferGraph graph;
         Graph::move(std::move(transferGraph), graph);
         if constexpr (MAKE_BIDIRECTIONAL) graph.makeBidirectional();

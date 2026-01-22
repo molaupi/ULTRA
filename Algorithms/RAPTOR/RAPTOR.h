@@ -287,8 +287,9 @@ private:
                 }
                 profiler.countMetric(METRIC_EDGES);
                 const int arrivalTime = earliestArrivalTime + data.transferGraph.get(TravelTime, edge);
-                Assert(data.isStop(data.transferGraph.get(ToVertex, edge)), "Graph contains edges to non stop vertices!");
-                const StopId toStop = StopId(data.transferGraph.get(ToVertex, edge));
+                const auto toId = data.transferGraph.get(ToVertex, edge);
+                Assert(data.isStop(toId), "Graph contains edges to non stop vertices!");
+                const StopId toStop = StopId(toId);
                 if (arrivalByTransfer(toStop, arrivalTime)) {
                     EarliestArrivalLabel& label = currentRound()[toStop];
                     label.parent = stop;
