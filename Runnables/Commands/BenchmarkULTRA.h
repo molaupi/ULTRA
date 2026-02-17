@@ -24,58 +24,7 @@ using namespace Shell;
 #include "../../DataStructures/CSA/Data.h"
 #include "../../DataStructures/RAPTOR/Data.h"
 #include "../../DataStructures/TripBased/Data.h"
-
-
-namespace {
-    template<typename Algorithm, typename Queries>
-    void runQueriesAndWriteJourneyStats(Algorithm &algorithm, const Queries &queries,
-                                        const std::string &outFileName) noexcept {
-        const size_t n = queries.size();
-        std::cout << "Running queries ..." << std::flush;
-        ProgressBar progressBar(n);
-        progressBar.SetDotOutputStep(1);
-        progressBar.SetPercentOutputStep(5);
-        double numJourneys = 0;
-        std::ofstream out(outFileName);
-        if (!out.good()) {
-            std::cerr << "Could not open output file " << outFileName << " for writing journeys.";
-            return;
-        }
-        out << "request_id,departure_time,arrival_time,num_trips,"
-                "accegr_transfer_time,intermediate_transfer_time,wait_time,in_vehicle_time\n";
-        size_t requestId = 0;
-        for (const auto &query: queries) {
-            algorithm.run(query.source, query.departureTime, query.target);
-            numJourneys += algorithm.getJourneys().size();
-            const auto journeys = algorithm.getJourneys();
-            const auto arrivals = algorithm.getArrivals();
-            Assert(journeys.size() == arrivals.size(), "Number of journeys and arrivals do not match.");
-            for (size_t i = 0; i < journeys.size(); ++i) {
-                const RAPTOR::Journey &journey = journeys[i];
-                const auto &arrival = arrivals[i];
-                const int accEgrTransferTime = RAPTOR::initialTransferTime(journey);
-                const int intermediateTransferTime = RAPTOR::intermediateTransferTime(journey);
-                int inVehicleTime = 0;
-                for (const auto &leg: journey) {
-                    if (leg.usesRoute) {
-                        inVehicleTime += leg.arrivalTime - leg.departureTime;
-                    }
-                }
-                const int waitTime = arrival.arrivalTime - query.departureTime - inVehicleTime - accEgrTransferTime -
-                                     intermediateTransferTime;
-                out << requestId << "," << query.departureTime << "," << arrival.arrivalTime << ","
-                        << arrival.numberOfTrips << "," << accEgrTransferTime << ","
-                        << intermediateTransferTime << "," << waitTime << "," << inVehicleTime << "\n";
-            }
-            ++requestId;
-            ++progressBar;
-        }
-        out.close();
-        std::cout << " done." << std::endl;
-        algorithm.getProfiler().printStatistics();
-        std::cout << "Avg. journeys: " << String::prettyDouble(numJourneys / n) << std::endl;
-    }
-}
+#include "QueryRunHelpers.h"
 
 
 class RunTransitiveCSAQueries : public ParameterizedCommand {
@@ -214,7 +163,8 @@ public:
 
 class RunTransitiveRAPTORWithGivenQueries : public ParameterizedCommand {
 public:
-    RunTransitiveRAPTORWithGivenQueries(BasicShell &shell) : ParameterizedCommand(shell, "runTransitiveRAPTORWithGivenQueries",
+    RunTransitiveRAPTORWithGivenQueries(BasicShell &shell) : ParameterizedCommand(
+        shell, "runTransitiveRAPTORWithGivenQueries",
         "Runs the given transitive RAPTOR queries.") {
         addParameter("RAPTOR input file");
         //CSV file output by TransformKaRRiRequestsToULTRAQueries, header: "source,target,departure_time"
@@ -242,7 +192,18 @@ public:
         }
         std::cout << " done." << std::endl;
 
-        runQueriesAndWriteJourneyStats(algorithm, queries, getParameter("Journey output file"));
+        const std::string outFileName = getParameter("Journey output file");
+
+        // outFileName should end in ".csv"
+        if (!String::endsWith(outFileName, ".csv")) {
+            std::cerr << "Output file name should end in .csv" << std::endl;
+            return;
+        }
+
+        // Detailed output file name is derived from outFileName by inserting "_detailed" before the .csv extension
+        const std::string detailedOutFileName = outFileName.substr(0, outFileName.size() - 4) + "_detailed.csv";
+
+        runRAPTORBasedQueriesAndWriteJourneyStats(algorithm, queries, outFileName, detailedOutFileName);
     }
 };
 
@@ -370,12 +331,22 @@ public:
 
         const bool preventWalking = getParameter<bool>("Prevent Walking");
         const std::string outFileName = getParameter("Journey output file");
+
+        // outFileName has to end in ".csv"
+        if (!String::endsWith(outFileName, ".csv")) {
+            std::cerr << "Output file name must end with .csv" << std::endl;
+            return;
+        }
+
+        // detailedOutFileName is outFileName plus "_detailed.csv"
+        const std::string detailedOutFileName = outFileName.substr(0, outFileName.size() - 4) + "_detailed.csv";
+
         if (preventWalking) {
             RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, true> algorithm(raptorData, ch);
-            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName);
+            runRAPTORBasedQueriesAndWriteJourneyStats(algorithm, queries, outFileName, detailedOutFileName);
         } else {
             RAPTOR::ULTRARAPTOR<RAPTOR::AggregateProfiler, false> algorithm(raptorData, ch);
-            runQueriesAndWriteJourneyStats(algorithm, queries, outFileName);
+            runRAPTORBasedQueriesAndWriteJourneyStats(algorithm, queries, outFileName, detailedOutFileName);
         }
     }
 
