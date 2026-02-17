@@ -19,7 +19,7 @@ function(add_runnable name)
     target_link_libraries(${name} PUBLIC OpenMP::OpenMP_CXX)
 endfunction()
 
-set(RUNNABLES DelayExperiments Network ULTRA ULTRAPHAST)
+set(RUNNABLES DelayExperiments Network ULTRA ULTRAPHAST RunULTRAScript)
 foreach(f ${RUNNABLES})
     add_runnable(${f} Runnables/${f}.cpp)
 endforeach()
